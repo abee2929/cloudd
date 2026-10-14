@@ -1,0 +1,24 @@
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { Auth0Provider } from '@auth0/auth0-react';
+import App from './App.jsx';
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <Auth0Provider
+    domain="dev-y4fiana1vgb3wlo1.us.auth0.com"
+    clientId="Wmn0sSyzWuepquOz6sotVziuLinhZPQK"
+    authorizationParams={{
+      redirect_uri: window.location.origin
+    }}
+  >
+    <App />
+  </Auth0Provider>
+);
+
+
+//
+npm create vite@latest auth0-demo -- --template react
+cd auth0-demo
+npm install
+npm install @auth0/auth0-react
