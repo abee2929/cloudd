@@ -1,0 +1,177 @@
+Step 1: Install OpenMPI and the compiler
+sudo apt update
+sudo apt install -y openmpi-bin libopenmpi-dev g++
+
+
+Step 2: Create the Hello World program
+nano hello_omp.cpp
+
+
+Paste:
+
+#include <iostream>
+#include <omp.h>
+using namespace std;
+
+int main() {
+    #pragma omp parallel
+    {
+        cout << "Hello from thread " << omp_get_thread_num() << endl;
+    }
+    return 0;
+}
+
+
+
+Save with Ctrl + O, Enter, and Ctrl + X.
+Step 3: Compile and execute
+g++ -fopenmp hello_omp.cpp -o hello_omp
+./hello_omp
+
+
+Step 4: Create the loop parallelism program
+nano loop_parallel.cpp
+
+
+Paste:
+
+#include <iostream>
+#include <omp.h>
+using namespace std;
+
+int main() {
+    int sum = 0;
+    #pragma omp parallel for reduction(+:sum)
+    for (int i = 1; i <= 100; i++) {
+        sum += i;
+    }
+    cout << "Sum = " << sum << endl;
+    return 0;
+}
+
+
+
+Compile and execute:
+g++ -fopenmp loop_parallel.cpp -o loop_parallel
+./loop_parallel
+
+
+Expected output:
+Sum = 5050
+
+
+Step 5: Create the Private program
+nano private.cpp
+
+
+Paste:
+
+#include <iostream>
+#include <omp.h>
+using namespace std;
+
+int main() {
+    int x = 10;
+    #pragma omp parallel private(x)
+    {
+        x = omp_get_thread_num();
+        cout << "Thread " << omp_get_thread_num() << " x = " << x << endl;
+    }
+    cout << "Original x = " << x << endl;
+    return 0;
+}
+
+
+
+Compile and execute:
+g++ -fopenmp private.cpp -o private
+./private
+
+
+Step 6: Create the First Private program
+nano first_private.cpp
+
+
+Paste:
+
+#include <iostream>
+#include <omp.h>
+using namespace std;
+
+int main() {
+    int x = 10;
+    #pragma omp parallel firstprivate(x)
+    {
+        x += omp_get_thread_num();
+        cout << "Thread " << omp_get_thread_num() << " x = " << x << endl;
+    }
+    cout << "Original x = " << x << endl;
+    return 0;
+}
+
+
+
+Compile and execute:
+g++ -fopenmp first_private.cpp -o first_private
+./first_private
+
+
+Step 7: Create the Last Private program
+nano last_private.cpp
+
+
+Paste:
+
+#include <iostream>
+#include <omp.h>
+using namespace std;
+
+int main() {
+    int x = 0;
+    #pragma omp parallel for lastprivate(x)
+    for (int i = 1; i <= 5; i++) {
+        x = i;
+    }
+    cout << "Last value = " << x << endl;
+    return 0;
+}
+
+
+
+Compile and execute:
+g++ -fopenmp last_private.cpp -o last_private
+./last_private
+
+
+Expected output:
+Last value = 5
+
+
+Step 8: Create the Critical Section program
+nano critical.cpp
+
+
+Paste:
+
+#include <iostream>
+#include <omp.h>
+using namespace std;
+
+int main() {
+    int count = 0;
+    #pragma omp parallel
+    {
+        #pragma omp critical
+        {
+            count++;
+        }
+    }
+    cout << "Count = " << count << endl;
+    return 0;
+}
+
+
+
+Compile and execute:
+g++ -fopenmp critical.cpp -o critical
+./critical

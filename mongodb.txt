@@ -1,0 +1,139 @@
+npm init -y 
+npm install express mongodb dotenv
+ node server.js
+
+
+//server.js//
+
+const express = require("express");
+const { MongoClient } = require("mongodb");
+require("dotenv").config();
+
+const app = express();
+const client = new MongoClient(process.env.MONGO_URI);
+
+app.use(express.json());
+app.use(express.static("public"));
+
+let collection;
+let connected = false;
+
+async function start() {
+    await client.connect();
+
+    const db = client.db("DemoDB");
+    collection = db.collection("records");
+    connected = true;
+
+    console.log("MongoDB Connected Successfully!");
+
+    app.get("/status", (req, res) => {
+        res.json({
+            connected: connected,
+            message: "MongoDB Atlas Connected"
+        });
+    });
+
+    app.get("/records", async (req, res) => {
+        try {
+            const records = await collection.find().toArray();
+            res.json(records);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    app.post("/records", async (req, res) => {
+        try {
+            const result = await collection.insertOne({
+                name: req.body.name,
+                course: req.body.course,
+                createdAt: new Date()
+            });
+
+            res.json({
+                message: "Record saved in MongoDB!",
+                id: result.insertedId
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    app.listen(process.env.PORT || 3000, () => {
+        console.log("Open http://localhost:3000");
+    });
+}
+
+start().catch(error => {
+    console.error("MongoDB connection failed:", error.message);
+});
+
+
+
+
+/public/index.html//
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MongoDB Application</title>
+</head>
+<body>
+
+    <h2>Student Details</h2>
+
+    <input type="text" id="name" placeholder="Enter name">
+    <input type="text" id="course" placeholder="Enter course">
+
+    <button onclick="saveRecord()">Submit</button>
+
+    <p id="message"></p>
+
+    <script>
+        async function saveRecord() {
+            const name = document.getElementById("name").value.trim();
+            const course = document.getElementById("course").value.trim();
+
+            if (!name || !course) {
+                document.getElementById("message").innerText =
+                    "Please enter name and course";
+                return;
+            }
+
+            try {
+                const response = await fetch("/records", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ name, course })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || "Failed to save");
+                }
+
+                document.getElementById("message").innerText =
+                    "Record saved successfully!";
+
+                document.getElementById("name").value = "";
+                document.getElementById("course").value = "";
+
+            } catch (error) {
+                document.getElementById("message").innerText =
+                    "Error: " + error.message;
+            }
+        }
+    </script>
+
+</body>
+</html>
+
+
+
+//.env//
+MONGO_URI=mongodb+srv://sathishraja_db_user:sathish123@cluster0.oqrqufh.mongodb.net/?appName=Cluster0
+PORT=3000

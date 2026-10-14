@@ -1,0 +1,94 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pokémon API</title>
+    <style>
+        body {
+            font-family: Arial;
+            text-align: center;
+            background: #f1f5f9;
+            padding: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            margin: auto;
+            max-width: 350px;
+            border-radius: 15px;
+        }
+
+        button {
+            background: #e63946;
+            color: white;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+        }
+
+        img {
+            width: 150px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>Pokémon API Explorer</h2>
+
+        <input id="pokemon" placeholder="Enter Pokémon name">
+        <button onclick="searchPokemon()">Search</button>
+
+        <p id="message"></p>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function searchPokemon() {
+            let name = document.getElementById("pokemon")
+                               .value.trim().toLowerCase();
+
+            let message = document.getElementById("message");
+            let result = document.getElementById("result");
+
+            result.innerHTML = "";
+
+            if (!name) {
+                message.textContent = "Enter a Pokémon name";
+                return;
+            }
+
+            message.textContent = "Loading...";
+
+            try {
+                let response = await fetch(
+                    "https://pokeapi.co/api/v2/pokemon/" + encodeURIComponent(name)
+                );
+
+                if (!response.ok) {
+                    throw new Error("Not found");
+                }
+
+                let data = await response.json();
+
+                message.textContent = "";
+
+                let image = data.sprites.front_default;
+
+                result.innerHTML = `
+                    <h3>${data.name.toUpperCase()}</h3>
+            
+                    <p>Height: ${data.height / 10} m</p>
+                    <p>Weight: ${data.weight / 10} kg</p>
+                    <p>Type: ${data.types.map(x => x.type.name).join(", ")}</p>
+                `;
+            } catch (error) {
+                message.textContent =
+                    "Pokémon not found or connection failed";
+            }
+        }
+    </script>
+
+</body>
+</html>
