@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dropbox</title>
+    <style>
+        body {
+            font-family: Arial;
+            margin: 30px;
+        }
+        button {
+            padding: 8px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Dropbox File Manager</h2>
+
+    <h3>Upload File</h3>
+    <input type="file" id="file">
+    <button onclick="uploadFile()">Upload</button>
+
+    <h3>My Files</h3>
+    <button onclick="loadFiles()">Show Files</button>
+
+    <ul id="files"></ul>
+    <p id="msg"></p>
+
+    <script>
+        const token = "YOUR_DROPBOX_ACCESS_TOKEN";
+
+        function loadFiles() {
+            fetch("https://api.dropboxapi.com/2/files/list_folder", {
+                method: "POST",
+                headers: {
+                    "Authorization": "Bearer " + token,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({path: ""})
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById("files").innerHTML = "";
+
+                data.entries.forEach(file => {
+                    let li = document.createElement("li");
+                    li.textContent = file.name;
+                    document.getElementById("files").appendChild(li);
+                });
+            })
+            .catch(() => {
+                document.getElementById("msg").innerText =
+                    "Error loading files";
+            });
+        }
+
+        function uploadFile() {
+            let file = document.getElementById("file").files[0];
+
+            if (!file) {
+                document.getElementById("msg").innerText =
+                    "Choose a file first";
+                return;
+            }
+
+            fetch("https://content.dropboxapi.com/2/files/upload", {
+                method: "POST",
+                headers: {
+                    "Authorization": "Bearer " + token,
+                    "Content-Type": "application/octet-stream",
+                    "Dropbox-API-Arg": JSON.stringify({
+                        path: "/" + file.name,
+                        mode: "add",
+                        autorename: true
+                    })
+                },
+                body: file
+            })
+            .then(res => {
+                if (!res.ok) throw new Error();
+                document.getElementById("msg").innerText =
+                    "File uploaded successfully";
+                loadFiles();
+            })
+            .catch(() => {
+                document.getElementById("msg").innerText =
+                    "Upload failed";
+            });
+        }
+    </script>
+
+</body>
+</html>
