@@ -1,0 +1,143 @@
+## 1. Ubuntu Terminal — Install Java 17
+
+```
+sudo apt-get update
+```
+
+```
+sudo apt-get install -y openjdk-17-jdk wget
+```
+
+```
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+```
+
+```
+export PATH=$JAVA_HOME/bin:$PATH
+```
+
+```
+java -version
+```
+
+## 2. Ubuntu Terminal — Download Spark
+
+```
+mkdir -p ~/Downloads
+```
+
+```
+cd ~/Downloads
+```
+
+```
+wget https://archive.apache.org/dist/spark/spark-4.2.0/spark-4.2.0-bin-hadoop3.tgz
+```
+
+```
+tar -xzf spark-4.2.0-bin-hadoop3.tgz
+```
+
+```
+sudo mv spark-4.2.0-bin-hadoop3 /usr/local/spark
+```
+
+## 3. Ubuntu Terminal — Configure Spark
+
+```
+echo 'export SPARK_HOME=/usr/local/spark' >> ~/.bashrc
+```
+
+```
+echo 'export PATH=$SPARK_HOME/bin:$PATH' >> ~/.bashrc
+```
+
+```
+source ~/.bashrc
+```
+
+```
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+```
+
+```
+export PATH=$JAVA_HOME/bin:$SPARK_HOME/bin:$PATH
+```
+
+```
+spark-shell --version
+```
+
+## 4. Ubuntu Terminal — Create the input file
+
+```
+mkdir -p ~/wordcount
+```
+
+```
+cd ~/wordcount
+```
+
+```
+echo hello hadoop hello world hadoop is fun > input.txt
+```
+
+```
+cat input.txt
+```
+
+```
+rm -rf /home/osboxes/wordcount/spark_output
+```
+
+## 5. Ubuntu Terminal — Start Spark
+
+```
+spark-shell
+```
+
+## 6. Spark Shell (`scala>` prompt) — Load the input file
+
+```
+val inputfile = sc.textFile("/home/osboxes/wordcount/input.txt")
+```
+
+## 7. Spark Shell — Perform Word Count
+
+```
+val counts = inputfile.flatMap(line => line.split(" ")).map(word => (word, 1)).reduceByKey(_ + _)
+```
+
+## 8. Spark Shell — Save the output
+
+```
+counts.saveAsTextFile("/home/osboxes/wordcount/spark_output")
+```
+
+## 9. Spark Shell — Exit
+
+```
+:quit
+```
+
+## 10. Ubuntu Terminal — Check output files
+
+```
+ls /home/osboxes/wordcount/spark_output
+```
+
+## 11. Ubuntu Terminal — Display final output
+
+```
+cat /home/osboxes/wordcount/spark_output/part-00000
+```
+
+Expected output:
+
+```
+(is,1)
+(hadoop,2)
+(hello,2)
+(fun,1)
+(world,1)
+```
