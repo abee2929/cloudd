@@ -1,430 +1,84 @@
-## 1. Install SSH and update Linux
-
-```
-# Update package list
-sudo apt update
-
-# Install SSH and rsync
-sudo apt install -y openssh-server openssh-client rsync
-
-# Start SSH service
-sudo systemctl enable --now ssh
-
-# Check SSH version
-ssh -V
-```
-
-## 2. Download and extract Hadoop
-
-```
-# Move to home directory
-cd ~
-
-# Download Hadoop 3.3.6
-wget https://dlcdn.apache.org/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz
-
-# Extract Hadoop
-tar -xzf hadoop-3.3.6.tar.gz
-
-# Rename extracted directory
-mv hadoop-3.3.6 hadoop-3.3.6-install
-```
-
-## 3. Install Java
-
-```
-# Install Java Development Kit 11
-sudo apt install -y openjdk-11-jdk
-
-# Check Java version
-java -version
-
-# Find Java compiler path
-readlink -f "$(which javac)"
-```
-
-## 4. Configure environment variables
-
-```
-# Add Hadoop and Java environment variables
-cat >> ~/.bashrc <<'EOF'
-export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
-export HADOOP_HOME=$HOME/hadoop-3.3.6-install
-export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
-export PATH=$PATH:$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
-export HADOOP_CLASSPATH=$($HADOOP_HOME/bin/hadoop classpath)
-EOF
-
-# Reload Bash configuration
-source ~/.bashrc
-
-# Verify Java installation
-java -version
-
-# Verify Hadoop installation
 hadoop version
-```
+java -version
+jps
 
-## 5. Configure Hadoop XML files
-
-### 5.1 Create NameNode and DataNode directories
-
-```
-# Create NameNode directory
-mkdir -p "$HADOOP_HOME/data/namenode"
-
-# Create DataNode directory
-mkdir -p "$HADOOP_HOME/data/datanode"
-```
-
-### 5.2 Configure `core-site.xml`
-
-```
-# Set the default HDFS address
-cat > "$HADOOP_HOME/etc/hadoop/core-site.xml" <<'EOF'
-<?xml version="1.0"?>
-<configuration>
-    <property>
-        <name>fs.defaultFS</name>
-        <value>hdfs://localhost:9000</value>
-    </property>
-</configuration>
-EOF
-```
-
-### 5.3 Configure `hdfs-site.xml`
-
-```
-# Configure HDFS replication and storage directories
-cat > "$HADOOP_HOME/etc/hadoop/hdfs-site.xml" <<'EOF'
-<?xml version="1.0"?>
-<configuration>
-    <property>
-        <name>dfs.replication</name>
-        <value>1</value>
-    </property>
-    <property>
-        <name>dfs.namenode.name.dir</name>
-        <value>file://${user.home}/hadoop-3.3.6-install/data/namenode</value>
-    </property>
-    <property>
-        <name>dfs.datanode.data.dir</name>
-        <value>file://${user.home}/hadoop-3.3.6-install/data/datanode</value>
-    </property>
-</configuration>
-EOF
-```
-
-### 5.4 Configure `mapred-site.xml`
-
-```
-# Configure MapReduce to use YARN
-cat > "$HADOOP_HOME/etc/hadoop/mapred-site.xml" <<'EOF'
-<?xml version="1.0"?>
-<configuration>
-    <property>
-        <name>mapreduce.framework.name</name>
-        <value>yarn</value>
-    </property>
-</configuration>
-EOF
-```
-
-### 5.5 Configure `yarn-site.xml`
-
-```
-# Configure the YARN NodeManager shuffle service
-cat > "$HADOOP_HOME/etc/hadoop/yarn-site.xml" <<'EOF'
-<?xml version="1.0"?>
-<configuration>
-    <property>
-        <name>yarn.nodemanager.aux-services</name>
-        <value>mapreduce_shuffle</value>
-    </property>
-</configuration>
-EOF
-```
-
-### 5.6 Configure Java for Hadoop
-
-```
-# Set JAVA_HOME in Hadoop environment configuration
-echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' >> "$HADOOP_HOME/etc/hadoop/hadoop-env.sh"
-```
-
-## 6. Configure passwordless SSH
-
-```
-# Create SSH directory
-mkdir -p ~/.ssh
-
-# Set SSH directory permissions
-chmod 700 ~/.ssh
-
-# Generate SSH key pair
-ssh-keygen -t rsa -P "" -f ~/.ssh/id_rsa
-
-# Add public key to authorized keys
-cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
-
-# Set authorized keys permissions
-chmod 600 ~/.ssh/authorized_keys
-
-# Test SSH connection
-ssh localhost
-
-# Exit SSH session after testing
-exit
-```
-
-## 7. Reload and verify configuration
-
-```
-# Reload environment variables
-source ~/.bashrc
-
-# Display Java path
-echo "$JAVA_HOME"
-
-# Display Hadoop path
-echo "$HADOOP_HOME"
-
-# Check Hadoop version
-hadoop version
-```
-
-## 8. Format and start Hadoop
-
-```
-# Format NameNode for a new installation only
-hdfs namenode -format
-
-# Start HDFS services
 start-dfs.sh
-
-# Start YARN services
 start-yarn.sh
 
-# Verify running Java processes
-jps
-```
-
-## 9. Create the WordCount project
-
-```
-# Create project directory
 mkdir -p ~/wordcount
-
-# Enter project directory
 cd ~/wordcount
 
-# Set Hadoop classpath
-export HADOOP_CLASSPATH=$("$HADOOP_HOME/bin/hadoop" classpath)
-
-# Create Java source file
 nano WordCount.java
-```
 
-Paste the following Java code into `WordCount.java`:
-
-```
-// Import input/output and string processing classes
 import java.io.IOException;
 import java.util.StringTokenizer;
-
-// Import Hadoop configuration and filesystem classes
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-
-// Import Hadoop data types
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
-
-// Import MapReduce job classes
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
-
-// Import input and output format classes
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
-// Define the WordCount class
 public class WordCount {
-
-    // Mapper splits each input line into words
-    public static class TokenizerMapper extends Mapper<Object, Text, Text, IntWritable> {
-
-        // Assign one to each word occurrence
+    public static class TokenizerMapper
+            extends Mapper<Object, Text, Text, IntWritable> {
         private final static IntWritable one = new IntWritable(1);
-
-        // Store the current word
         private Text word = new Text();
 
-        // Process each input line
-        public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
-
-            // Split the line into individual words
+        public void map(Object key, Text value, Context context)
+                throws IOException, InterruptedException {
             StringTokenizer itr = new StringTokenizer(value.toString());
-
-            // Process every word
             while (itr.hasMoreTokens()) {
-
-                // Store the next word
                 word.set(itr.nextToken());
-
-                // Emit the word and its count
                 context.write(word, one);
             }
         }
     }
 
-    // Reducer adds the counts for each word
-    public static class IntSumReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
-
-        // Store the final word count
+    public static class IntSumReducer
+            extends Reducer<Text, IntWritable, Text, IntWritable> {
         private IntWritable result = new IntWritable();
 
-        // Combine all counts associated with a word
-        public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
-
-            // Initialize the total
+        public void reduce(Text key, Iterable<IntWritable> values, Context context)
+                throws IOException, InterruptedException {
             int sum = 0;
-
-            // Add all occurrences
-            for (IntWritable val : values) {
+            for (IntWritable val : values)
                 sum += val.get();
-            }
-
-            // Store the total count
             result.set(sum);
-
-            // Emit the word and its total count
             context.write(key, result);
         }
     }
 
-    // Driver configures and runs the MapReduce job
     public static void main(String[] args) throws Exception {
-
-        // Create Hadoop configuration
         Configuration conf = new Configuration();
-
-        // Create the WordCount job
         Job job = Job.getInstance(conf, "word count");
-
-        // Set the main class
         job.setJarByClass(WordCount.class);
-
-        // Set the Mapper class
         job.setMapperClass(TokenizerMapper.class);
-
-        // Set the Combiner class
         job.setCombinerClass(IntSumReducer.class);
-
-        // Set the Reducer class
         job.setReducerClass(IntSumReducer.class);
-
-        // Set output key and value types
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(IntWritable.class);
-
-        // Specify input directory
         FileInputFormat.addInputPath(job, new Path(args[0]));
-
-        // Specify output directory
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
-
-        // Execute the job and return its status
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
 }
-```
 
-Save and exit Nano using `Ctrl + O`, `Enter`, and `Ctrl + X`.
+javac -cp "$(hadoop classpath)" WordCount.java
+jar -cf wc.jar WordCount*.class
 
-## 10. Compile the program
+echo "hello hadoop hello world hadoop" > input.txt
 
-```
-# Create directory for compiled classes
-mkdir -p classes
+hdfs dfs -mkdir -p /input
+hdfs dfs -put -f input.txt /input/
+hdfs dfs -rm -r /output
 
-# Compile WordCount.java
-javac -classpath "$HADOOP_CLASSPATH" -d classes WordCount.java
-```
+hadoop jar wc.jar WordCount /input /output
 
-## 11. Create the JAR file
+hdfs dfs -cat /output/part-r-00000
 
-```
-# Package compiled classes into a JAR
-jar -cvf wordcount.jar -C classes .
-
-# Verify JAR creation
-ls -l wordcount.jar
-```
-
-## 12. Create input file and upload it to HDFS
-
-```
-# Create the input text file
-cat > input.txt <<'EOF'
-hadoop is a big data framework
-hadoop processes big data
-big data uses hadoop
-EOF
-
-# Display input contents
-cat input.txt
-
-# Create HDFS input directory
-hdfs dfs -mkdir -p /user/$USER/wordcount/input
-
-# Upload input file to HDFS
-hdfs dfs -put -f input.txt /user/$USER/wordcount/input/
-
-# Verify uploaded file
-hdfs dfs -ls /user/$USER/wordcount/input
-```
-
-## 13. Run the MapReduce program
-
-```
-# Remove previous output directory if it exists
-hdfs dfs -rm -r -f /user/$USER/wordcount/output
-
-# Execute the WordCount job
-hadoop jar ~/wordcount/wordcount.jar WordCount /user/$USER/wordcount/input /user/$USER/wordcount/output
-```
-
-## 14. View the output
-
-```
-# Display word counts
-hdfs dfs -cat /user/$USER/wordcount/output/part-r-00000
-```
-
-## 15. Verify Hadoop services
-
-```
-# List HDFS root contents
-hdfs dfs -ls /
-
-# Display HDFS storage report
-hdfs dfsadmin -report
-
-# List YARN nodes
-yarn node -list
-
-# Display running Hadoop processes
-jps
-```
-
-## 16. Stop Hadoop services
-
-```
-# Stop YARN
 stop-yarn.sh
-
-# Stop HDFS
 stop-dfs.sh
-```
