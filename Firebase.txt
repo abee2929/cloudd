@@ -1,0 +1,259 @@
+Firebase
+1)open in google and login
+----------------
+1)Create a Firebase project
+Open Firebase Console, sign in with Google, and click Create a project. Name it StudentCloudLab.
+
+2)Enable Authentication
+
+Open Build → Authentication → Get started → Sign-in method → Email/Password → Enable → Save.
+
+3)Create Firestore database
+
+Open Build → Firestore Database → Create database. Choose a location and create the database. For a real application, configure secure rules before using it.
+
+4)Register your web app
+
+In Project Overview, click "+add app" the web icon </>, register the app, and copy the Firebase configuration shown. You will insert it into your JavaScript code.
+-----------
+cmds---
+mkdir StudentCloudLab
+cd StudentCloudLab
+npm install -g firebase-tools
+firebase login
+-----------
+StudentCloudLab/
+├── index.html
+├── style.css
+└── app.js
+--------------------------
+1)file : index.html
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Cloud System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Student Cloud Registration</h1>
+
+    <h2>Register / Login</h2>
+    <input id="email" type="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+
+    <button id="registerBtn">Register</button>
+    <button id="loginBtn">Login</button>
+    <button id="logoutBtn">Logout</button>
+
+    <hr>
+
+    <h2>Student Details</h2>
+    <input id="studentName" placeholder="Student Name">
+    <input id="department" placeholder="Department">
+
+    <button id="saveBtn">Save Details</button>
+    <button id="viewBtn">View Details</button>
+
+    <p id="message">Please register or login.</p>
+    <div id="studentList"></div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
+---------
+2)style.css
+
+body {
+    font-family: Arial, sans-serif;
+    background: #eef3f8;
+    text-align: center;
+    padding: 30px;
+}
+
+h1 {
+    color: #1565c0;
+}
+
+input {
+    display: block;
+    margin: 10px auto;
+    padding: 10px;
+    width: 250px;
+}
+
+button {
+    margin: 5px;
+    padding: 10px 15px;
+    background: #1565c0;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #0d47a1;
+}
+
+#message, #studentList {
+    margin-top: 20px;
+}
+------------------------
+3)app.js
+
+import { initializeApp } from
+    "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+
+import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+    getFirestore,
+    doc,
+    setDoc,
+    getDoc
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+
+// Replace these values with your Firebase web app config
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    appId: "YOUR_APP_ID"
+};
+
+// Connect Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const message = document.getElementById("message");
+
+// Register user
+document.getElementById("registerBtn").onclick = async () => {
+    try {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+
+        await createUserWithEmailAndPassword(auth, email, password);
+
+        message.textContent = "Registration successful!";
+    } catch (error) {
+        message.textContent = error.message;
+    }
+};
+
+// Login user
+document.getElementById("loginBtn").onclick = async () => {
+    try {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+
+        await signInWithEmailAndPassword(auth, email, password);
+
+        message.textContent = "Login successful!";
+    } catch (error) {
+        message.textContent = error.message;
+    }
+};
+
+// Save student details in Firestore
+document.getElementById("saveBtn").onclick = async () => {
+    try {
+        if (!auth.currentUser) {
+            message.textContent = "Please login first.";
+            return;
+        }
+
+        const name = document.getElementById("studentName").value;
+        const department = document.getElementById("department").value;
+
+        if (!name.trim() || !department.trim()) {
+            message.textContent = "Enter all student details.";
+            return;
+        }
+
+        await setDoc(doc(db, "students", auth.currentUser.uid), {
+            name: name,
+            department: department,
+            email: auth.currentUser.email
+        });
+
+        message.textContent = "Details saved to Firestore!";
+    } catch (error) {
+        message.textContent = error.message;
+    }
+};
+
+// Retrieve student details
+document.getElementById("viewBtn").onclick = async () => {
+    try {
+        if (!auth.currentUser) {
+            message.textContent = "Please login first.";
+            return;
+        }
+
+        const studentRef = doc(
+            db, "students", auth.currentUser.uid
+        );
+
+        const result = await getDoc(studentRef);
+
+        if (result.exists()) {
+            const student = result.data();
+
+            document.getElementById("studentList").textContent =
+                "Name: " + student.name +
+                " | Department: " + student.department +
+                " | Email: " + student.email;
+        } else {
+            message.textContent = "No student details found.";
+        }
+    } catch (error) {
+        message.textContent = error.message;
+    }
+};
+
+// Logout user
+document.getElementById("logoutBtn").onclick = async () => {
+    try {
+        await signOut(auth);
+        message.textContent = "Logged out successfully.";
+        document.getElementById("studentList").textContent = "";
+    } catch (error) {
+        message.textContent = error.message;
+    }
+};
+---------------------------------------
+5. Configure Firestore security rules
+In Firebase Console, open Firestore Database → Rules and use the following rules for this lab. They allow a signed-in user to read and write only their own student document.
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /students/{userId} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == userId;
+    }
+  }
+}
+
+Click Publish. Do not use open rules that allow everyone to read or write your database.
+-------------------------
+2: Replace this section in app.js
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    appId: "YOUR_APP_ID"
+};
+Replace it with your actual configuration and save the file using Ctrl + S. from "config" in firebase console
+----------------------------------
+6. Run the application
+firebase init hosting
+firebase deploy --only hosting
